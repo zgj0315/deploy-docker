@@ -22,6 +22,8 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+sudo apt-get install -y iptables
+
 # 2. 架构检测与路径选择
 ARCH=$(uname -m)
 log_info "当前系统架构: $ARCH"
