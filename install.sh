@@ -27,21 +27,24 @@ ARCH=$(uname -m)
 log_info "当前系统架构: $ARCH"
 
 if [[ "$ARCH" == "x86_64" ]]; then
-    PKG_DIR="$WORK_DIR/pkgs/amd64"
+    PKG_DIR="$WORK_DIR/pkgs/x86_64"
 elif [[ "$ARCH" == "aarch64" ]]; then
-    PKG_DIR="$WORK_DIR/pkgs/arm64"
+    PKG_DIR="$WORK_DIR/pkgs/aarch64"
 else
     log_err "不支持的架构: $ARCH"
     exit 1
 fi
 
 DOCKER_TGZ=$(find "$PKG_DIR" -name "docker-*.tgz" | head -n 1)
-COMPOSE_BIN="$PKG_DIR/docker-compose"
+COMPOSE_BIN="$PKG_DIR/docker-compose-linux-${ARCH}"
 
 if [[ ! -f "$DOCKER_TGZ" ]]; then
     log_err "未在 $PKG_DIR 找到 Docker 安装包"
     exit 1
 fi
+
+log_info "DOCKER_TGZ: ${DOCKER_TGZ}"
+log_info "COMPOSE_BIN: ${COMPOSE_BIN}"
 
 # 3. 清理旧环境
 log_info "正在清理旧版本..."
