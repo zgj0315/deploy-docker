@@ -6,7 +6,7 @@ rm -f /etc/systemd/system/docker.service
 systemctl daemon-reload
 
 # 删除二进制
-rm -f /usr/bin/docker* /usr/bin/containerd* /usr/bin/runc /usr/bin/ctr
+rm -f /usr/bin/docker* /usr/bin/containerd* /usr/bin/runc /usr/bin/ctr /etc/docker/daemon.json
 
 # 提示数据删除
 echo "二进制文件已删除。"
