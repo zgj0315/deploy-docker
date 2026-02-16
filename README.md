@@ -283,42 +283,124 @@ sudo su -
 
 ## 离线安装包准备
 
-如需准备离线安装包：
+### 使用自动下载脚本（推荐）
 
-### 1. 下载 Docker 二进制包
+使用 `download_pkg.sh` 自动下载所有必需的安装包：
+
+```bash
+./download_pkg.sh
+```
+
+脚本会自动：
+- 下载 x86_64 和 aarch64 架构的 Docker 和 Docker Compose
+- 验证文件完整性
+- 支持断点续传和重试机制
+
+### 手动下载
+
+如需手动准备离线安装包：
+
+#### 1. 下载 Docker 二进制包
 
 访问 [Docker 官方下载页](https://download.docker.com/linux/static/stable/)：
 
 ```bash
 # x86_64
-wget https://download.docker.com/linux/static/stable/x86_64/docker-24.0.7.tgz
+wget https://download.docker.com/linux/static/stable/x86_64/docker-29.2.1.tgz
 
 # aarch64
-wget https://download.docker.com/linux/static/stable/aarch64/docker-24.0.7.tgz
+wget https://download.docker.com/linux/static/stable/aarch64/docker-29.2.1.tgz
 ```
 
-### 2. 下载 Docker Compose
+#### 2. 下载 Docker Compose
 
 访问 [Docker Compose Releases](https://github.com/docker/compose/releases)：
 
 ```bash
 # x86_64
-wget https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-x86_64
+wget https://github.com/docker/compose/releases/download/v5.0.2/docker-compose-linux-x86_64
 
 # aarch64
-wget https://github.com/docker/compose/releases/download/v2.23.0/docker-compose-linux-aarch64
+wget https://github.com/docker/compose/releases/download/v5.0.2/docker-compose-linux-aarch64
 ```
 
-### 3. 组织目录结构
+#### 3. 组织目录结构
 
 ```bash
 mkdir -p pkgs/x86_64 pkgs/aarch64
 
 # 放置文件
-mv docker-24.0.7.tgz pkgs/x86_64/
+mv docker-29.2.1.tgz pkgs/x86_64/
 mv docker-compose-linux-x86_64 pkgs/x86_64/
-mv docker-*-aarch64.tgz pkgs/aarch64/
+mv docker-29.2.1-aarch64.tgz pkgs/aarch64/
 mv docker-compose-linux-aarch64 pkgs/aarch64/
+```
+
+## 打包分发
+
+### 创建部署包
+
+使用打包脚本创建完整的离线部署包：
+
+```bash
+./make_pkg.sh
+```
+
+脚本会：
+1. 验证所有必需文件的完整性
+2. 自动读取 Docker 版本号
+3. 创建 `dist/deploy-docker-{version}.tar.gz` 压缩包
+4. 显示打包结果和使用说明
+
+**输出示例：**
+```
+[INFO] === Docker 离线部署包打包工具 ===
+[INFO] 工作目录: /path/to/deploy-docker
+[INFO] 输出目录: /path/to/deploy-docker/dist
+[INFO] === 验证打包文件 ===
+[INFO] ✓ 脚本: install.sh (0 MB)
+[INFO] ✓ 脚本: pre-install.sh (0 MB)
+[INFO] ✓ 脚本: validate.sh (0 MB)
+[INFO] ✓ 脚本: uninstall.sh (0 MB)
+[INFO] ✓ 脚本: download_pkg.sh (0 MB)
+[INFO] ✓ 文档: README.md (0 MB)
+[INFO] ✓ x86_64: docker-29.2.1.tgz (80 MB)
+[INFO] ✓ x86_64: docker-compose (30 MB)
+[INFO] ✓ aarch64: docker-29.2.1.tgz (73 MB)
+[INFO] ✓ aarch64: docker-compose (29 MB)
+[INFO] 所有文件验证通过
+[INFO] === 开始创建部署包 ===
+[INFO] 复制文件到临时目录...
+[INFO] 创建压缩包: deploy-docker-29.2.1.tar.gz
+[INFO] === 打包完成 ===
+[INFO] 输出文件: dist/deploy-docker-29.2.1.tar.gz
+[INFO] 文件大小: 212M
+[INFO] Docker 版本: 29.2.1
+[INFO] Docker Compose 版本: v5.0.2
+```
+
+### 分发部署包
+
+将生成的 tar.gz 文件传输到目标服务器：
+
+```bash
+# 使用 scp
+scp dist/deploy-docker-29.2.1.tar.gz user@target-server:/tmp/
+
+# 或使用 U盘、网络共享等方式
+```
+
+### 在目标服务器上使用
+
+```bash
+# 解压
+tar xzf deploy-docker-29.2.1.tar.gz
+cd deploy-docker
+
+# 安装（按照快速开始章节的步骤）
+sudo ./pre-install.sh
+sudo ./install.sh
+sudo ./validate.sh
 ```
 
 ## 高级配置
