@@ -3,8 +3,7 @@
 ## 制品机构建前
 
 - Ubuntu 24.04
-- 已配置 Docker 官方 APT 源
-- 已安装 `zstd`
+- 已执行 `sudo bash scripts/prepare-build-host.sh`
 
 ## 生产机安装前
 

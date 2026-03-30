@@ -50,7 +50,7 @@ docker-offline-bundle/
 ### 4.1 联网制品机构建
 
 1. 准备一台与生产环境同架构的 Ubuntu 24.04 主机。
-2. 配置 Docker 官方 APT 源。
+2. 执行制品机初始化脚本，配置 Docker 官方 APT 源和构建依赖。
 3. 下载目标版本的 Docker 相关 `deb` 包及依赖包。
 4. 生成 `sha256` 校验文件和版本清单。
 5. 打包为统一交付物。
@@ -189,6 +189,12 @@ Docker 依赖 `iptables`/`nftables` 兼容层，安装前需要确认：
 ## 9. 联网制品机构建方案
 
 建议单独提供一个“构建离线包”的脚本，在联网机器执行。
+
+对于全新制品机，先执行：
+
+```bash
+sudo bash scripts/prepare-build-host.sh
+```
 
 核心步骤：
 
