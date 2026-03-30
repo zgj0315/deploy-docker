@@ -35,7 +35,7 @@ bash scripts/build-offline-bundle.sh
 断网生产机安装：
 
 ```bash
-bash scripts/install.sh
+sudo bash scripts/install.sh
 ```
 
 执行安装校验：
@@ -56,4 +56,5 @@ bash scripts/uninstall.sh
 - 默认支持 `amd64` 和 `arm64`。
 - 脚手架优先采用 `deb` 包离线安装。
 - `scripts/build-offline-bundle.sh` 假定制品机已配置好 Docker 官方 APT 源。
+- 安装脚本会把执行 `sudo` 的登录用户加入 `docker` 组，重新登录后可直接执行 `docker`。
 - 业务镜像导入由业务模块部署脚本负责，不在本仓库实现。

@@ -34,7 +34,7 @@ EXTRA_PACKAGES=(
 )
 
 log() {
-  printf '[INFO] %s\n' "$*"
+  printf '[INFO] %s\n' "$*" >&2
 }
 
 warn() {
@@ -48,6 +48,26 @@ die() {
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
+}
+
+require_package_candidate() {
+  local pkg=$1
+  local candidate=
+  local policy_output
+
+  policy_output=$(apt-cache policy "${pkg}")
+  candidate=$(printf '%s\n' "${policy_output}" | awk '/Candidate:/ {print $2}')
+  [[ -n "${candidate}" && "${candidate}" != "(none)" ]] || die "package ${pkg} has no install candidate; configure the required APT repository first"
+}
+
+has_package_candidate() {
+  local pkg=$1
+  local candidate=
+  local policy_output
+
+  policy_output=$(apt-cache policy "${pkg}" 2>/dev/null || true)
+  candidate=$(printf '%s\n' "${policy_output}" | awk '/Candidate:/ {print $2}')
+  [[ -n "${candidate}" && "${candidate}" != "(none)" ]]
 }
 
 ensure_build_host() {
@@ -68,8 +88,18 @@ prepare_bundle_tree() {
   cp "${VERSION_FILE}" "${MNF_DIR}/VERSION"
 }
 
+check_apt_prerequisites() {
+  local pkg
+  for pkg in "${CORE_PACKAGES[@]}"; do
+    require_package_candidate "${pkg}"
+  done
+}
+
 collect_package_names() {
   local names=("${CORE_PACKAGES[@]}" "${EXTRA_PACKAGES[@]}")
+  local filtered=()
+  local pkg
+
   if command -v apt-rdepends >/dev/null 2>&1; then
     log "collecting package closure via apt-rdepends"
     mapfile -t names < <(
@@ -81,7 +111,16 @@ collect_package_names() {
     warn "apt-rdepends not found, using curated package list only"
   fi
 
-  printf '%s\n' "${names[@]}" | awk 'NF' | sort -u
+  for pkg in "${names[@]}"; do
+    [[ -n "${pkg}" ]] || continue
+    if has_package_candidate "${pkg}"; then
+      filtered+=("${pkg}")
+    else
+      warn "skipping package without install candidate: ${pkg}"
+    fi
+  done
+
+  printf '%s\n' "${filtered[@]}" | awk 'NF' | sort -u
 }
 
 download_packages() {
@@ -128,6 +167,7 @@ main() {
   require_cmd tar
 
   ensure_build_host
+  check_apt_prerequisites
   prepare_bundle_tree
   download_packages
   generate_checksums

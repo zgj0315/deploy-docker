@@ -28,6 +28,15 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
 }
 
+resolve_target_user() {
+  if [[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != "root" ]]; then
+    printf '%s\n' "${SUDO_USER}"
+    return 0
+  fi
+
+  printf '%s\n' ""
+}
+
 check_platform() {
   [[ -r /etc/os-release ]] || die "cannot detect operating system"
   # shellcheck disable=SC1091
@@ -89,13 +98,38 @@ start_services() {
   systemctl restart docker
 }
 
+configure_docker_group() {
+  local target_user
+  target_user=$(resolve_target_user)
+
+  getent group docker >/dev/null 2>&1 || groupadd --system docker
+
+  if [[ -n "${target_user}" ]]; then
+    log "adding user ${target_user} to docker group"
+    usermod -aG docker "${target_user}"
+  else
+    log "install script was not invoked via sudo by a non-root user, skipping docker group membership update"
+  fi
+}
+
 show_post_install_notes() {
-  cat <<'EOF'
+  local target_user
+  target_user=$(resolve_target_user)
+
+  if [[ -n "${target_user}" ]]; then
+    cat <<EOF
 [INFO] installation finished
-[INFO] if you plan to use a non-root account, add it to the docker group:
-[INFO]   usermod -aG docker <user>
-[INFO] then re-login to refresh the group membership
+[INFO] user ${target_user} has been added to the docker group
+[INFO] re-login or run 'newgrp docker' before using docker without sudo
 EOF
+  else
+    cat <<'EOF'
+[INFO] installation finished
+[INFO] to use docker without sudo, add a non-root account to the docker group:
+[INFO]   usermod -aG docker <user>
+[INFO] then re-login or run 'newgrp docker'
+EOF
+  fi
 }
 
 main() {
@@ -110,6 +144,7 @@ main() {
   install_packages
   install_config
   start_services
+  configure_docker_group
 
   if [[ -x "${VERIFY_SCRIPT}" ]]; then
     "${VERIFY_SCRIPT}"
