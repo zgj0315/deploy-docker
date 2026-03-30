@@ -15,6 +15,7 @@ SCRIPT_OUT_DIR="${BUNDLE_DIR}/scripts"
 VERSION_FILE="${PROJECT_ROOT}/manifest/VERSION"
 PACKAGE_LIST_FILE="${PROJECT_ROOT}/manifest/packages.txt"
 ARCH=${ARCH:-$(dpkg --print-architecture)}
+APT_CACHE_DIR=${APT_CACHE_DIR:-"${OUT_ROOT}/apt-cache/${ARCH}"}
 
 CORE_PACKAGES=(
   containerd.io
@@ -70,6 +71,28 @@ has_package_candidate() {
   [[ -n "${candidate}" && "${candidate}" != "(none)" ]]
 }
 
+find_cached_deb() {
+  local pkg=$1
+  local version=$2
+  local deb_file=
+  local deb_pkg=
+  local deb_version=
+
+  shopt -s nullglob
+  for deb_file in "${APT_CACHE_DIR}"/*.deb; do
+    deb_pkg=$(dpkg-deb -f "${deb_file}" Package 2>/dev/null || true)
+    deb_version=$(dpkg-deb -f "${deb_file}" Version 2>/dev/null || true)
+    if [[ "${deb_pkg}" == "${pkg}" && "${deb_version}" == "${version}" ]]; then
+      shopt -u nullglob
+      printf '%s\n' "${deb_file}"
+      return 0
+    fi
+  done
+  shopt -u nullglob
+
+  return 1
+}
+
 ensure_build_host() {
   [[ -r /etc/os-release ]] || die "cannot detect operating system"
   # shellcheck disable=SC1091
@@ -81,7 +104,7 @@ ensure_build_host() {
 
 prepare_bundle_tree() {
   rm -rf "${BUNDLE_DIR}"
-  mkdir -p "${PKG_DIR}" "${CFG_DIR}" "${DOC_DIR}" "${MNF_DIR}" "${SCRIPT_OUT_DIR}"
+  mkdir -p "${PKG_DIR}" "${CFG_DIR}" "${DOC_DIR}" "${MNF_DIR}" "${SCRIPT_OUT_DIR}" "${APT_CACHE_DIR}"
   cp -R "${PROJECT_ROOT}/config/." "${CFG_DIR}/"
   cp -R "${PROJECT_ROOT}/scripts/." "${SCRIPT_OUT_DIR}/"
   cp "${VERSION_FILE}" "${MNF_DIR}/VERSION"
@@ -125,14 +148,42 @@ collect_package_names() {
 
 download_packages() {
   local packages=()
+  local missing_packages=()
+  local downloaded_count=0
+  local pkg=
+  local candidate=
+  local deb_path=
+
   mapfile -t packages < <(collect_package_names)
   [[ ${#packages[@]} -gt 0 ]] || die "package list is empty"
 
-  log "downloading ${#packages[@]} packages"
-  (
-    cd "${PKG_DIR}"
-    apt-get download "${packages[@]}"
-  )
+  for pkg in "${packages[@]}"; do
+    candidate=$(apt-cache policy "${pkg}" | awk '/Candidate:/ {print $2}')
+    [[ -n "${candidate}" && "${candidate}" != "(none)" ]] || die "package ${pkg} has no install candidate"
+
+    deb_path=$(find_cached_deb "${pkg}" "${candidate}") || missing_packages+=("${pkg}")
+  done
+
+  if (( ${#missing_packages[@]} > 0 )); then
+    log "downloading ${#missing_packages[@]} package(s); cache dir: ${APT_CACHE_DIR}"
+    (
+      cd "${APT_CACHE_DIR}"
+      apt-get download "${missing_packages[@]}"
+    )
+    downloaded_count=${#missing_packages[@]}
+  else
+    log "all ${#packages[@]} packages restored from cache: ${APT_CACHE_DIR}"
+  fi
+
+  for pkg in "${packages[@]}"; do
+    candidate=$(apt-cache policy "${pkg}" | awk '/Candidate:/ {print $2}')
+    deb_path=$(find_cached_deb "${pkg}" "${candidate}") || die "missing downloaded package for ${pkg}=${candidate}"
+    cp "${deb_path}" "${PKG_DIR}/"
+  done
+
+  if (( downloaded_count > 0 )); then
+    log "downloaded ${downloaded_count} package(s); reused $(( ${#packages[@]} - downloaded_count )) from cache"
+  fi
 
   : > "${PACKAGE_LIST_FILE}"
   local pkg_file

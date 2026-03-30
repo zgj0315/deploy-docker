@@ -6,6 +6,8 @@ DOCKER_SOURCE_FILE="/etc/apt/sources.list.d/docker.sources"
 DOCKER_KEYRING_DIR="/etc/apt/keyrings"
 DOCKER_KEYRING_FILE="${DOCKER_KEYRING_DIR}/docker.asc"
 APT_LOCK_TIMEOUT=${APT_LOCK_TIMEOUT:-300}
+DOCKER_APT_BASE_URL=${DOCKER_APT_BASE_URL:-"https://download.docker.com/linux/ubuntu"}
+DOCKER_APT_GPG_URL=${DOCKER_APT_GPG_URL:-"${DOCKER_APT_BASE_URL}/gpg"}
 
 log() {
   printf '[INFO] %s\n' "$*"
@@ -92,14 +94,14 @@ install_prerequisites() {
 }
 
 configure_docker_repo() {
-  log "configuring Docker APT repository"
+  log "configuring Docker APT repository: ${DOCKER_APT_BASE_URL}"
   install -m 0755 -d "${DOCKER_KEYRING_DIR}"
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o "${DOCKER_KEYRING_FILE}"
+  curl -fsSL "${DOCKER_APT_GPG_URL}" -o "${DOCKER_KEYRING_FILE}"
   chmod a+r "${DOCKER_KEYRING_FILE}"
 
-  cat > "${DOCKER_SOURCE_FILE}" <<'EOF'
+  cat > "${DOCKER_SOURCE_FILE}" <<EOF
 Types: deb
-URIs: https://download.docker.com/linux/ubuntu
+URIs: ${DOCKER_APT_BASE_URL}
 Suites: noble
 Components: stable
 Signed-By: /etc/apt/keyrings/docker.asc
