@@ -83,9 +83,9 @@ prepare_bundle_tree() {
   rm -rf "${BUNDLE_DIR}"
   mkdir -p "${PKG_DIR}" "${CFG_DIR}" "${DOC_DIR}" "${MNF_DIR}" "${SCRIPT_OUT_DIR}"
   cp -R "${PROJECT_ROOT}/config/." "${CFG_DIR}/"
-  cp -R "${PROJECT_ROOT}/docs/." "${DOC_DIR}/"
   cp -R "${PROJECT_ROOT}/scripts/." "${SCRIPT_OUT_DIR}/"
   cp "${VERSION_FILE}" "${MNF_DIR}/VERSION"
+  cp "${PROJECT_ROOT}/README.md" "${DOC_DIR}/README.md"
 }
 
 check_apt_prerequisites() {

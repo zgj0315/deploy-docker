@@ -2,67 +2,47 @@
 
 Ubuntu 24.04 Docker 离线部署脚手架。
 
+## 目标
+
+- 在联网 Ubuntu 24.04 制品机上生成 Docker 离线安装包
+- 在断网 Ubuntu 24.04 服务器上完成 Docker 安装和校验
+- 仅负责 Docker 运行时，不处理业务镜像导入
+
 ## 目录
 
 ```text
-.
-├── config/
-│   ├── daemon.json
-│   └── docker.service.d/
-│       └── override.conf
-├── docs/
-│   ├── checklists.md
-│   ├── rollback.md
-│   └── ubuntu2404-offline-docker-solution.md
-├── manifest/
-│   ├── VERSION
-│   └── packages.txt
-└── scripts/
-    ├── build-offline-bundle.sh
-    ├── install.sh
-    ├── prepare-build-host.sh
-    ├── uninstall.sh
-    └── verify.sh
+config/
+manifest/
+scripts/
+README.md
 ```
 
-## 使用方式
-
-初始化全新制品机：
+## 使用
 
 ```bash
 sudo bash scripts/prepare-build-host.sh
-```
-
-联网制品机构建离线包：
-
-```bash
 bash scripts/build-offline-bundle.sh
-```
-
-断网生产机安装：
-
-```bash
 sudo bash scripts/install.sh
-```
-
-执行安装校验：
-
-```bash
 bash scripts/verify.sh
-```
-
-卸载 Docker：
-
-```bash
 bash scripts/uninstall.sh
 ```
 
-## 说明
+## 脚本
 
-- 目标系统固定为 Ubuntu 24.04。
-- 默认支持 `amd64` 和 `arm64`。
-- 脚手架优先采用 `deb` 包离线安装。
-- 全新制品机先执行 `scripts/prepare-build-host.sh`，再执行 `scripts/build-offline-bundle.sh`。
-- 如果系统后台正在执行 `unattended-upgrades`，`scripts/prepare-build-host.sh` 会等待 APT 锁释放后继续。
-- 安装脚本会把执行 `sudo` 的登录用户加入 `docker` 组，重新登录后可直接执行 `docker`。
-- 业务镜像导入由业务模块部署脚本负责，不在本仓库实现。
+- `scripts/prepare-build-host.sh`
+  初始化全新制品机，安装依赖并配置 Docker 官方 APT 源。
+- `scripts/build-offline-bundle.sh`
+  下载 Docker 及依赖的 `deb` 包，生成离线安装包到 `dist/`。
+- `scripts/install.sh`
+  在断网服务器安装 Docker，写入配置并启动服务。
+- `scripts/verify.sh`
+  校验 Docker 服务和命令可用性。
+- `scripts/uninstall.sh`
+  卸载 Docker，默认保留 `/var/lib/docker` 数据。
+
+## 约束
+
+- 仅支持 Ubuntu 24.04
+- 支持 `amd64` 和 `arm64`
+- 业务镜像导入由业务模块脚本负责
+- 安装后需重新登录或执行 `newgrp docker` 才能免 `sudo` 使用 `docker`
